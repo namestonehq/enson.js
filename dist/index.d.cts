@@ -94,8 +94,9 @@ export class Address {
 }
 
 type ProfileObject = {
-	texts?: string[],
-	coins?: any[],
+	texts?: string[];
+	datas?: string[];
+	coins?: any[];
 	contentHash?: any;
 	chash?: any;
 	pubkey?: any;
@@ -106,6 +107,7 @@ export class Profile {
 	static from(value: Record | Profile | ProfileObject): Profile;
 
 	texts: Set<string>;
+	datas: Set<string>;
 	coins: Set<bigint>;
 	chash: boolean;
 	pubkey: boolean;
@@ -117,12 +119,14 @@ export class Profile {
 	import(value: Record | Profile | ProfileObject): void;
 	set(key: any | any[], include?: boolean): void;
 	setText(key: string | string[], include?: boolean): void;
+	setData(key: string | string[], include?: boolean): void;
 	setCoin(query: CoinQuery | CoinQuery[], include?: boolean): void;
 	getCoins(): Coin[];	
 	[Symbol.iterator](): IterableIterator<string>;
 
 	toJSON(): {
 		texts: string[];
+		datas: string[];
 		coins: string[];
 		chash: boolean;
 		pubkey: boolean;
@@ -153,6 +157,7 @@ export class Record {
 	import(record: ToRecord, silent?: boolean): void;
 
 	setText(key: string, value?: string): void;
+	setData(key: string, value?: ToData): void;
 	setAddress(...args: Parameters<typeof Address.from>): void;
 	setChash(...args: Parameters<typeof Chash.from>): void;
 	setPubkey(...args: Parameters<typeof Pubkey.from>): void;
@@ -162,12 +167,14 @@ export class Record {
 	parseCall(call: ToData, answer: ToData): void;
 
 	getTexts(): [key: string, value: string][];
+	getDatas(): [key: string, value: string][];
 	getAddresses(): Address[];
 	getAddress(query: CoinQuery): Address | undefined;
 	getChash(): Chash | undefined;
 	getPubkey(): Pubkey | undefined;
 	
 	text(key: string): string | undefined;
+	data(key: string): Uint8Array | undefined;
 	addr(type: Coin | number): Uint8Array | undefined;
 	contenthash(): Uint8Array | undefined;
 	pubkey(): Uint8Array | undefined;
@@ -175,7 +182,7 @@ export class Record {
 
 	[Symbol.iterator](): IterableIterator<RecordEntry>;
 	toObject(): {[key: string]: any};
-	toEntries(hr?: boolean): RecordEntry[];
+	toEntries(hr?: boolean): [key: string, value: any][];
 	toJSON(hr?: boolean): {[key: string]: any};
 
 	makeSetters(opts?: {

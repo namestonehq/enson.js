@@ -1,6 +1,7 @@
 import {error_with, namesplit, namehash, dns_encoded} from './utils.js';
 import {Record} from './Record.js';
-import {keccak_256} from '@noble/hashes/sha3';
+import {keccak_256} from '@noble/hashes/sha3.js';
+import {utf8ToBytes} from '@noble/hashes/utils.js';
 import {ens_normalize, ens_beautify} from '@adraffy/ens-normalize';
 
 const LABEL_SELF = '.';
@@ -20,7 +21,7 @@ export class Node extends Map {
 	}
 	get labelhash() {
 		// note: root labelhash is undefined
-		return this.parent ? keccak_256(this.label) : new Uint8Array(32);
+		return this.parent ? keccak_256(utf8ToBytes(this.label)) : new Uint8Array(32);
 	}
 	get namehash() {
 		return namehash(this.path().map(x => x.label));
