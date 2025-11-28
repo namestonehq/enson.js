@@ -4,6 +4,9 @@ let r = new Record();
 r.set('name', 'raffy');
 r.set('description', 'chonk');
 
+r.set('&a', '0x11');
+r.set('&bb', '0x2222');
+
 r.set('$eth', '0x1934FC75aD10d7eEd51dc7A92773cAc96A06BE56');
 r.set('$btc', 'bc1q9ejpfyp7fvjdq5fjx5hhrd6uzevn9gupxd98aq');
 r.set('$doge', 'DKcAMwyEq5rwe2nXUMBqVYZFSNneCg6iSL');
@@ -11,8 +14,6 @@ r.set('$doge', 'DKcAMwyEq5rwe2nXUMBqVYZFSNneCg6iSL');
 r.set('#ipfs', 'bafybeiawq7pbt4krnopfmcvymvp2uz4ohibd5p7ugskkybvdmwa2v7evpy');
 r.set('#ipns', 'k51qzi5uqu5dl6mkhgsua6663hpyb7zs8qjh5blic33j5393iie8abot6jydfh');
 r.set('#ar', 'yBYkngZXGCQgYU-nUCwo5vns2ALUU0LXXZrCUlUUWkk');
-
-
 
 // same as #name => name()
 r.set(Record.NAME, 'raffy.eth');

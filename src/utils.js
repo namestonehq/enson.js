@@ -1,5 +1,5 @@
-import {bytesToHex, hexToBytes, utf8ToBytes, createView} from '@noble/hashes/utils';
-import {keccak_256} from '@noble/hashes/sha3';
+import {bytesToHex, hexToBytes, utf8ToBytes, createView} from '@noble/hashes/utils.js';
+import {keccak_256} from '@noble/hashes/sha3.js';
 
 export function namesplit(x) {
 	return Array.isArray(x) ? x : x ? x.split('.') : [];
@@ -7,7 +7,7 @@ export function namesplit(x) {
 
 export function namehash(name) {
 	return namesplit(name).reduceRight((v, x) => {
-		v.set(keccak_256(x), 32);
+		v.set(keccak_256(utf8ToBytes(x)), 32);
 		v.set(keccak_256(v), 0);
 		return v;
 	}, new Uint8Array(64)).slice(0, 32);

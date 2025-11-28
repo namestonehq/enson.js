@@ -1,8 +1,8 @@
 'use strict';
 
 var addressEncoder = require('@ensdomains/address-encoder');
-var utils = require('@noble/hashes/utils');
-var sha3 = require('@noble/hashes/sha3');
+var utils_js = require('@noble/hashes/utils.js');
+var sha3_js = require('@noble/hashes/sha3.js');
 var cid = require('@adraffy/cid');
 var ensNormalize = require('@adraffy/ens-normalize');
 
@@ -12,8 +12,8 @@ function namesplit(x) {
 
 function namehash(name) {
 	return namesplit(name).reduceRight((v, x) => {
-		v.set(sha3.keccak_256(x), 32);
-		v.set(sha3.keccak_256(v), 0);
+		v.set(sha3_js.keccak_256(utils_js.utf8ToBytes(x)), 32);
+		v.set(sha3_js.keccak_256(v), 0);
 		return v;
 	}, new Uint8Array(64)).slice(0, 32);
 }
@@ -21,7 +21,7 @@ function namehash(name) {
 function dns_encoded(name) {
 	let labels = namesplit(name);
 	let m = labels.map(label => {
-		let v = utils.utf8ToBytes(label);
+		let v = utils_js.utf8ToBytes(label);
 		if (!v.length) throw error_with('empty label', {labels});
 		if (v.length > 255) throw error_with('too long', {labels, label});
 		return v;
@@ -76,7 +76,7 @@ function try_coerce_bytes(x, no_phex) {
 	} else if (Array.isArray(x)) {
 		return Uint8Array.from(x);
 	} else if (!no_phex && is_samecase_phex(x)) {
-		return utils.hexToBytes(x.slice(2)); // throws if odd-length
+		return utils_js.hexToBytes(x.slice(2)); // throws if odd-length
 	} else {
 		return x;
 	} 
@@ -92,11 +92,11 @@ function bytes32_from(x) {
 		if (x.length !== 32) throw error_with('expected 32-bytes', {value: x});
 		return x;
 	}
-	return utils.hexToBytes(BigInt(x).toString(16).padStart(64, '0').slice(-64));
+	return utils_js.hexToBytes(BigInt(x).toString(16).padStart(64, '0').slice(-64));
 }
 
 function phex_from_bytes(v) {
-	return '0x' + utils.bytesToHex(v);
+	return '0x' + utils_js.bytesToHex(v);
 }
 
 function bigint_at(v, i) {
@@ -120,11 +120,11 @@ function abi_encode(types, values, selector) {
 		let ty = types[i];
 		if (ty === 's') {
 			ty = 'v';
-			v = utils.utf8ToBytes(v);
+			v = utils_js.utf8ToBytes(v);
 		}
 		if (ty === 'v') {
 			let tail = new Uint8Array((1 + Math.ceil(v.length / 32)) << 5);
-			utils.createView(tail).setUint32(28, v.length);
+			utils_js.createView(tail).setUint32(28, v.length);
 			tail.set(v, 32);
 			return [true, tail];
 		} else if (ty === 'i') {
@@ -140,7 +140,7 @@ function abi_encode(types, values, selector) {
 	if (is_string(selector)) selector = parseInt(selector, 16);
 	let skip = is_number(selector) ? 4 : 0;
 	let buf = new Uint8Array(m.reduce((a, [b, v]) => a + v.length + (b ? 32 : 0), skip));
-	let dv = utils.createView(buf);
+	let dv = utils_js.createView(buf);
 	let pos = 0;
 	if (skip) dv.setUint32(0, selector); pos += skip;
 	let ptr = m.reduce((a, [b, v]) => a + (b ? 32 : v.length), 0);
@@ -367,19 +367,19 @@ const SHORT_DATAURL_KEYS = [
 		mime: 'text/plain',
 		key: 'text', 
 		decode: utf8_from_bytes,
-		encode: utils.utf8ToBytes
+		encode: utils_js.utf8ToBytes
 	},
 	{
 		mime: 'text/html',
 		key: 'html', 
 		decode: utf8_from_bytes,
-		encode: utils.utf8ToBytes
+		encode: utils_js.utf8ToBytes
 	},
 	{
 		mime: 'application/json',
 		key: 'json',
 		decode: v => JSON.parse(utf8_from_bytes(v)),
-		encode: x => utils.utf8ToBytes(JSON.stringify(x))
+		encode: x => utils_js.utf8ToBytes(JSON.stringify(x))
 	}
 ];
 
@@ -425,12 +425,12 @@ const Onion = {
 		let pubkey = bytes_from(x, false);
 		if (pubkey.length !== 32) throw error_with(`expected 32-byte pubkey`, {pubkey});
 		let v = new Uint8Array(48); // 15 + 32 + 1
-		v.set(utils.utf8ToBytes(ONION_SUFFIX + ' checksum'));
+		v.set(utils_js.utf8ToBytes(ONION_SUFFIX + ' checksum'));
 		v.set(pubkey, 15);
 		v[47] = version;
 		let bytes = new Uint8Array(35);
 		bytes.set(pubkey);
-		bytes.set(sha3.sha3_256(v).subarray(0, 2), 32);
+		bytes.set(sha3_js.sha3_256(v).subarray(0, 2), 32);
 		bytes[34] = version;
 		return bytes;
 	}
@@ -460,7 +460,7 @@ const GenericURL = {
 };
 
 function encode_mime_data(mime, data) {
-	mime = utils.toBytes(mime);
+	mime = utils_js.utf8ToBytes(mime);
 	let len = [];
 	let pos = cid.uvarint.write(len, mime.length);
 	let v = new Uint8Array(pos + mime.length + data.length);
@@ -601,7 +601,8 @@ class Chash {
 				return this.fromParts(DataURL, encode_mime_data(short.mime, short.encode(x)));
 			}
 			if (hint.includes('/')) {
-				return this.fromParts(DataURL, encode_mime_data(hint, utils.toBytes(x)));
+				const v = try_coerce_bytes(x);
+				return this.fromParts(DataURL, encode_mime_data(hint, v !== x ? v : utils_js.utf8ToBytes(x)));
 			}
 			if (hint === KEY_ONION) {
 				return this.fromOnion(x);
@@ -663,7 +664,7 @@ class Chash {
 		if (scheme === 'http' && authority.endsWith(ONION_SUFFIX)) {
 			return this.fromOnion(authority.slice(0, -ONION_SUFFIX.length));
 		}
-		return this.fromParts(GenericURL, utils.utf8ToBytes(url));
+		return this.fromParts(GenericURL, utils_js.utf8ToBytes(url));
 	}
 	constructor(bytes) {
 		this.bytes = bytes;
@@ -773,7 +774,7 @@ class Pubkey {
 	get x() { return this.bytes.slice(0, 32); }
 	get y() { return this.bytes.slice(32); }
 	get address() { 
-		return ETH.format(sha3.keccak_256(this.bytes).subarray(-20)); // should this be Address()? 
+		return ETH.format(sha3_js.keccak_256(this.bytes).subarray(-20)); // should this be Address()? 
 	}
 	toObject() {
 		let {x, y, address} = this;
@@ -792,10 +793,11 @@ class Pubkey {
 }
 
 function short_phex(v) {
-	return utils.bytesToHex(v).replace(/^0+(?!$)/, '0x');
+	return utils_js.bytesToHex(v).replace(/^0+(?!$)/, '0x');
 }
 
 const SEL_TEXT   = 0x59d1d43c; // https://adraffy.github.io/keccak.js/test/demo.html#algo=evm&s=text%28bytes32%2Cstring%29&escape=1&encoding=utf8
+const SEL_DATA   = 0xecbfada3; // https://adraffy.github.io/keccak.js/test/demo.html#algo=evm&s=data%28bytes32%2Cstring%29&escape=1&encoding=utf8
 const SEL_ADDR   = 0xf1cb7e06; // https://adraffy.github.io/keccak.js/test/demo.html#algo=evm&s=addr%28bytes32%2Cuint256%29&escape=1&encoding=utf8
 const SEL_CHASH  = 0xbc1c58d1; // https://adraffy.github.io/keccak.js/test/demo.html#algo=evm&s=contenthash%28bytes32%29&escape=1&encoding=utf8
 const SEL_PUBKEY = 0xc8690233; // https://adraffy.github.io/keccak.js/test/demo.html#algo=evm&s=pubkey%28bytes32%29&escape=1&encoding=utf8
@@ -803,6 +805,7 @@ const SEL_NAME   = 0x691f3431; // https://adraffy.github.io/keccak.js/test/demo.
 const SEL_ADDR0  = 0x3b3b57de; // https://adraffy.github.io/keccak.js/test/demo.html#algo=evm&s=addr%28bytes32%29&escape=1&encoding=utf8
 
 const SEL_SET_TEXT   = 0x10f13a8c; // https://adraffy.github.io/keccak.js/test/demo.html#algo=evm&s=setText%28bytes32%2Cstring%2Cstring%29&escape=1&encoding=utf8
+const SEL_SET_DATA   = 0x4eb9c45e; // https://adraffy.github.io/keccak.js/test/demo.html#algo=evm&s=setData%28bytes32%2Cstring%2Cbytes%29&escape=1&encoding=utf8
 const SEL_SET_ADDR   = 0x8b95dd71; // https://adraffy.github.io/keccak.js/test/demo.html#algo=evm&s=setAddr%28bytes32%2Cuint256%2Cbytes%29&escape=1&encoding=utf8
 const SEL_SET_CHASH  = 0x304e6ade; // https://adraffy.github.io/keccak.js/test/demo.html#algo=evm&s=setContenthash%28bytes32%2Cbytes%29&escape=1&encoding=utf8
 const SEL_SET_PUBKEY = 0x29cd62ea; // https://adraffy.github.io/keccak.js/test/demo.html#algo=evm&s=setPubkey%28bytes32%2Cbytes32%2Cbytes32%29&escape=1&encoding=utf8
@@ -814,6 +817,7 @@ const SEL_SET_NAME   = 0x77372213; // https://adraffy.github.io/keccak.js/test/d
 
 const PREFIX_COIN   = '$';
 const PREFIX_MAGIC  = '#';
+const PREFIX_DATA   = '&';
 const PREFIX_CHASH  = PREFIX_MAGIC + 'chash';
 const PREFIX_PUBKEY = PREFIX_MAGIC + 'pubkey';
 const PREFIX_NAME   = PREFIX_MAGIC + 'name';
@@ -828,7 +832,7 @@ function try_coerce_bytes_nonempty(x) {
 
 class Record {
 	static isSpecialKey(s) {
-		return s?.startsWith(PREFIX_COIN) || s?.startsWith(PREFIX_MAGIC);
+		return !!s && (s.startsWith(PREFIX_COIN) || s.startsWith(PREFIX_MAGIC) || s.startsWith(PREFIX_DATA));
 	}
 	static from(xs, silent) {
 		let r = new this();
@@ -836,24 +840,27 @@ class Record {
 		return r;
 	}
 	constructor() {
-		this._texts  = new Map();
-		this._addrs  = new Map();
+		this._texts = new Map();
+		this._datas = new Map();
+		this._addrs = new Map();
 		this.clear();
 	}
 	clear() {
 		this._texts.clear();
+		this._datas.clear();
 		this._addrs.clear();
 		this._chash  = undefined;
 		this._pubkey = undefined;
 		this._name   = undefined;
 	}
 	get size() {
-		return this._texts.size + this._addrs.size + (this._chash?1:0) + (this._pubkey?1:0) + (this._name?1:0);
+		return this._texts.size + this._datas.size + this._addrs.size + (this._chash?1:0) + (this._pubkey?1:0) + (this._name?1:0);
 	}
 	import(xs, silent) {
 		if (xs instanceof Record) { // copy
-			for (let [k, x] of xs._texts) this.set(k, x);
-			for (let [k, x] of xs._addrs) this.set(k, x.slice());
+			for (let [k, x] of xs._texts) this._texts.set(k, x);
+			for (let [k, x] of xs._datas) this._datas.set(k, x.slice());
+			for (let [k, x] of xs._addrs) this._addrs.set(k, x.slice());
 			if (xs._chash)  this._chash  = xs._chash.slice();
 			if (xs._pubkey) this._pubkey = xs._pubkey.slice();
 			if (xs._name)   this._name   = xs._name;
@@ -919,13 +926,27 @@ class Record {
 			}
 		}
 	}
+	getDatas() {
+		return [...this._datas];
+	}
+	setData(x, y) {
+		let v = try_coerce_bytes_nonempty(y);
+		if (v) {
+			this._datas.set(x, v);
+		} else {
+			this._datas.delete(x);
+		}
+	}
 	set(key, value, silent) {
 		try {
 			if (is_string(key)) {
 				if (key.startsWith(PREFIX_COIN)) {
 					return this.setAddress(key.slice(PREFIX_COIN.length), value);
+				} else if (key.startsWith(PREFIX_DATA)) {
+					return this.setData(key.slice(PREFIX_DATA.length), value);
 				} else if (key.startsWith(PREFIX_MAGIC)) {
 					switch (key) {
+						case PREFIX_DATA:   return this.setData(key.slice(PREFIX_DATA.length), value);
 						case PREFIX_CHASH:  return this.setChash(value);
 						case PREFIX_PUBKEY: return this.setPubkey(value);
 						case PREFIX_NAME:   return this.setName(value);
@@ -949,6 +970,9 @@ class Record {
 		for (let [k, x] of this._texts) {
 			yield [k, fn(x), SEL_TEXT];
 		}
+		for (let [k, x] of this._datas) {
+			yield [PREFIX_DATA + k, fn(x), SEL_TEXT];
+		}
 		for (let a of this.getAddresses()) {
 			yield [PREFIX_COIN + a.coin.name, fn(a), SEL_ADDR];
 		}
@@ -968,8 +992,14 @@ class Record {
 	[Symbol.iterator]() {
 		return this._entries(x => x);
 	}
+	toObject() {
+		return Object.fromEntries(this._entries(x => is_string(x) || x instanceof Uint8Array ? x : x.toObject()));
+	}
 	toEntries(hr) {
 		let m = [...this._texts];
+		for (let [k, x] of this._datas) {
+			m.push([PREFIX_DATA + k, phex_from_bytes(x)]);
+		}
 		for (let [k, x] of this._addrs) {
 			let coin = Coin.fromType(k);
 			m.push([PREFIX_COIN + coin.name, coin.format(x)]);
@@ -993,9 +1023,6 @@ class Record {
 		}
 		return m;
 	}
-	toObject() {
-		return Object.fromEntries(this._entries(x => is_string(x) ? x : x.toObject())); // TODO can i use valueOf() ?
-	}
 	toJSON(hr) {
 		return Object.fromEntries(this.toEntries(hr));
 	}
@@ -1008,7 +1035,14 @@ class Record {
 			if (s0 !== s1) {
 				calls.push(abi_encode('iss', [node, k, s1 ?? ''], SEL_SET_TEXT));
 			}
-		}		
+		}
+		for (let k of new Set([...init._datas.keys(), ...this._datas.keys()])) {
+			let v0 = init._datas.get(k);
+			let v1 = this._datas.get(k);
+			if (!array_equals(v0, v1)) {
+				calls.push(abi_encode('isv', [node, k, v1 ?? []], SEL_SET_DATA));
+			}
+		}
 		for (let k of new Set([...init._addrs.keys(), ...this._addrs.keys()])) {
 			let v0 = init._addrs.get(k);
 			let v1 = this._addrs.get(k);
@@ -1053,26 +1087,31 @@ class Record {
 			} else if (answer.length & 31) {
 				throw new Error('odd answer');
 			}
-			let dv = utils.createView(call);
+			const dv = utils_js.createView(call);
 			switch (dv.getUint32(0)) {
 				case SEL_TEXT: {
-					let key = utf8_from_bytes(read_memory(call.subarray(4), 32));
-					let value = utf8_from_bytes(read_memory(answer, 0));
+					const key = utf8_from_bytes(read_memory(call.subarray(4), 32));
+					const value = utf8_from_bytes(read_memory(answer, 0));
 					return this.setText(key, value);
 				}
+				case SEL_DATA: {
+					const key = utf8_from_bytes(read_memory(call.subarray(4), 32));
+					const value = read_memory(answer, 0);
+					return this.setData(key, value);
+				}
 				case SEL_ADDR: {
-					let v = read_memory(answer, 0);
+					const v = read_memory(answer, 0);
 					return this.setAddress(bigint_at(call, 36), v.length && v);
 				}
 				case SEL_CHASH: {
-					let v = read_memory(answer, 0);
+					const v = read_memory(answer, 0);
 					return this.setChash(v.length && v);
 				}
 				case SEL_NAME:   return this.setName(utf8_from_bytes(read_memory(answer, 0)));
 				case SEL_PUBKEY: return this.setPubkey(answer.some(x => x) && answer);
 				case SEL_ADDR0: {
 					if (answer.length != 32) throw new Error('expected 32 bytes');
-					let v = answer.subarray(-20);
+					const v = answer.subarray(-20);
 					return this.setAddress(60, v.some(x => x) && v);
 				}
 				default: throw new Error('unknown sighash');
@@ -1083,6 +1122,7 @@ class Record {
 	}
 	// ezccip interface
 	text(key)     { return this._texts.get(key); }
+	data(key)     { return this._datas.get(key); }
 	addr(type)    { return this._addrs.get(Coin.type(type)); }
 	contenthash() { return this._chash; }
 	pubkey()      { return this._pubkey; }
@@ -1103,6 +1143,7 @@ class Profile {
 			'email',
 			'url',
 			'avatar',
+			'header',
 			'location',
 			'description',
 			'notice',
@@ -1128,6 +1169,7 @@ class Profile {
 	}
 	clear() {
 		this.texts = new Set();
+		this.datas = new Set();
 		this.coins = new Set();
 		this.chash = false;
 		this.pubkey = false;
@@ -1135,17 +1177,19 @@ class Profile {
 		this.addr0 = false;
 	}
 	get size() {
-		return this.texts.size + this.coins.size + this.chash + this.pubkey + this.name + this.addr0;
+		return this.texts.size + this.datas.size + this.coins.size + this.chash + this.pubkey + this.name + this.addr0;
 	}
 	import(x) {
 		if (x instanceof Record) {
 			for (let k of x._texts.keys()) this.texts.add(k);
+			for (let k of x._datas.keys()) this.datas.add(k);
 			for (let k of x._addrs.keys()) this.coins.add(k);
 			if (x._chash)  this.chash = true;
 			if (x._pubkey) this.pubkey = true;
 			if (x._name)   this.name = true;
 		} else if (x instanceof Profile) {
 			for (let k of x.texts) this.texts.add(k);
+			for (let k of x.datas) this.datas.add(k);
 			for (let k of x.coins) this.coins.add(k);
 			this.chash  = x.chash;
 			this.pubkey = x.pubkey;
@@ -1154,6 +1198,7 @@ class Profile {
 		} else if (x && typeof x === 'object') {
 			// https://github.com/ensdomains/ensjs-v3/blob/7e01ad8579c08b453fc64b1972b764b6d884b774/packages/ensjs/src/functions/public/getRecords.ts#L33
 			if (Array.isArray(x.texts)) this.setText(x.texts);
+			if (Array.isArray(x.datas)) this.setData(x.datas);
 			if (Array.isArray(x.coins)) this.setCoin(x.coins);
 			this.chash  = !!x.chash || !!x.contentHash;
 			this.pubkey = !!x.pubkey;
@@ -1174,6 +1219,8 @@ class Profile {
 					case PREFIX_ADDR0:	this.addr0  = on; break;
 					default: throw error_with('unknown property', {prop: x});
 				}
+			} else if (x.startsWith(PREFIX_DATA)) {
+				this.setData(x.slice(PREFIX_DATA.length), on);
 			} else if (x.startsWith(PREFIX_COIN)) {
 				this.setCoin(x.slice(PREFIX_COIN.length), on);
 			} else {
@@ -1198,6 +1245,19 @@ class Profile {
 			throw error_with('expected string', {value: x});
 		}
 	}
+	setData(x, on = true) {
+		if (is_string(x)) {
+			if (on) {
+				this.datas.add(x);
+			} else {
+				this.datas.delete(x);
+			}
+		} else if (x?.[Symbol.iterator]) {
+			for (let y of x) this.setData(y, on);
+		} else {
+			throw error_with('expected string', {value: x});
+		}
+	}
 	setCoin(x, on = true) {
 		if (!is_string(x) && x?.[Symbol.iterator]) {
 			for (let y of x) this.setCoin(y, on);
@@ -1215,6 +1275,9 @@ class Profile {
 	}
 	*[Symbol.iterator]() {
 		yield* Array.from(this.texts);
+		for (let x of this.datas) {
+			yield PREFIX_DATA + x;
+		}
 		for (let x of this.coins) {
 			yield Coin.fromType(x).name;
 		}
@@ -1229,6 +1292,9 @@ class Profile {
 		for (let x of this.texts) {
 			calls.push(abi_encode('is', [node, x], SEL_TEXT));
 		}
+		for (let x of this.datas) {
+			calls.push(abi_encode('is', [node, x], SEL_DATA));
+		}
 		for (let x of this.coins) {
 			calls.push(abi_encode('ii', [node, x], SEL_ADDR));
 		}
@@ -1239,15 +1305,15 @@ class Profile {
 		return calls;
 	}
 	toJSON(hr) {
-		let json = {
-			texts: [...this.texts],
+		return {
+			texts: Array.from(this.texts),
+			datas: Array.from(this.datas, x => PREFIX_DATA + x),
 			coins: this.getCoins().map(x => x.toJSON(hr)),
+			chash: this.chash,
+			pubkey: this.pubkey,
+			name: this.name,
+			addr0: this.addr0,
 		};
-		json.chash  = this.chash;
-		json.pubkey = this.pubkey;
-		json.name   = this.name;
-		json.addr0  = this.addr0;
-		return json;
 	}
 }
 
@@ -1279,7 +1345,7 @@ class Node extends Map {
 	}
 	get labelhash() {
 		// note: root labelhash is undefined
-		return this.parent ? sha3.keccak_256(this.label) : new Uint8Array(32);
+		return this.parent ? sha3_js.keccak_256(utils_js.utf8ToBytes(this.label)) : new Uint8Array(32);
 	}
 	get namehash() {
 		return namehash(this.path().map(x => x.label));

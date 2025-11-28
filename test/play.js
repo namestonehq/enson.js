@@ -1,4 +1,5 @@
 import {Profile, Record, Coin, Address, Pubkey, Chash, Node, phex_from_bytes} from '../src/index.js';
+import {inspect} from 'node:util';
 
 let p = new Profile();
 p.setText('name');
@@ -6,6 +7,7 @@ p.setText(['a', 'b']);
 p.chash = true;
 
 console.log(p.makeGetters().map(phex_from_bytes));
+
 
 let r = Record.from({
 	name: 'Chonker',
@@ -29,11 +31,13 @@ let vitalik = Record.from({
     name: 'Vitalik',
     $eth: '0xd8dA6BF26964aF9D7eEd9e03E53415D37aA96045',
     $btc: 'bc1pcm5cz7zqmc23ml65m628vrln0fja6hnhewmncya3x6n6rq7t7rdqhgqlvc',
+	'&datakey': '0x1234', 
     avatar: 'eip155:1/erc1155:0xb32979486938aa9694bfc898f35dbed459f44424/10063',
     '#ipfs': 'k2jmtxrxbr58aa3716vvr99qallufj3qae595op83p37jod4exujup32',
     '#pubkey': {x: 1, y: 2},
     '#name': 'vitalik.eth',
 });
+console.log(vitalik.toJSON());
 console.log(Profile.from(vitalik));
 
 console.log(vitalik.makeSetters({name: 'vitalik.eth'}).map(phex_from_bytes));
@@ -65,6 +69,6 @@ console.log(node);
 
 console.log(Address.from('0x57632Ba9A844af0AB7d5cdf98b0056c8d87e3A85').toObject());
 
-const chash = Chash.fromOnion('2gzyxa5ihm7nsggfxnu52rck2vv4rvmdlkiu3zzui5du4xyclen53wid');
-console.log(chash.toObject());
+const chash = Chash.from('0xe40101fa011b20d1de9994b4d039f6548d191eb26786769f580809256b4685ef316805265ea162');
+console.log(inspect(chash.toObject(), false, null));
 console.log(chash.toPhex());

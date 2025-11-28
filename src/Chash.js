@@ -1,7 +1,7 @@
 import {error_with, array_equals, utf8_from_bytes, is_string, phex_from_bytes, bytes_from, try_coerce_bytes} from './utils.js';
 import {CID, uvarint, Base64URL, Base64, Base32} from '@adraffy/cid';
-import {sha3_256} from '@noble/hashes/sha3';
-import {utf8ToBytes, toBytes} from '@noble/hashes/utils';
+import {sha3_256} from '@noble/hashes/sha3.js';
+import {utf8ToBytes} from '@noble/hashes/utils.js';
 
 const SCHEME_SEPARATOR = '://';
 const KEY_ONION = 'onion';
@@ -103,7 +103,7 @@ export const GenericURL = {
 };
 
 function encode_mime_data(mime, data) {
-	mime = toBytes(mime);
+	mime = utf8ToBytes(mime);
 	let len = [];
 	let pos = uvarint.write(len, mime.length);
 	let v = new Uint8Array(pos + mime.length + data.length);
@@ -244,7 +244,8 @@ export class Chash {
 				return this.fromParts(DataURL, encode_mime_data(short.mime, short.encode(x)));
 			}
 			if (hint.includes('/')) {
-				return this.fromParts(DataURL, encode_mime_data(hint, toBytes(x)));
+				const v = try_coerce_bytes(x);
+				return this.fromParts(DataURL, encode_mime_data(hint, v !== x ? v : utf8ToBytes(x)));
 			}
 			if (hint === KEY_ONION) {
 				return this.fromOnion(x);
