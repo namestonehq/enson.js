@@ -20,6 +20,7 @@ let vitalik = Record.from({
   name: "Vitalik",
   $eth: "0xd8dA6BF26964aF9D7eEd9e03E53415D37aA96045",
   $btc: "bc1pcm5cz7zqmc23ml65m628vrln0fja6hnhewmncya3x6n6rq7t7rdqhgqlvc",
+  '&data': "0x1234",
   avatar: "eip155:1/erc1155:0xb32979486938aa9694bfc898f35dbed459f44424/10063",
   "#ipfs": "k2jmtxrxbr58aa3716vvr99qallufj3qae595op83p37jod4exujup32",
   "#pubkey": { x: 1, y: 2 },
@@ -28,6 +29,7 @@ let vitalik = Record.from({
 
 // supports all standard resolver functions
 let name = vitalik.text("name"); // "Vitalik"
+let data = vitalik.data("data"); // Uint8Array(2)
 let addr60 = vitalik.addr(60); // Uint8Array(20)
 let hash = vitalik.contenthash(); // Uint8Array(38)
 let pubkey = vitalik.pubkey(); // UintArray(64)
@@ -59,6 +61,7 @@ let profile0 = Profile.ENS(); // default ENS profile
 let profile = Profile.from(vitalik);
 // Profile {
 //   texts: Set(2) { 'name', 'avatar' },
+//   datas: Set(1) { 'data' },
 //   addrs: Set(2) { 60n, 0n },
 //   chash: true,
 //   pubkey: true,
